@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Organizations ───────────────────────────────────────────────
+
+model Organization {
+  id             String        @id @default(cuid())
+  name           String
+  contactEmail   String
+  status         String        @default("pending") // pending, verified, suspended
+  commissionRate Float         @default(0.15) // platform commission (15%)
+  users          User[]
+  bookings       Booking[]
+  vehicles       Vehicle[]
+  pricingRules   PricingRule[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+// ─── Users ───────────────────────────────────────────────────────
+
+model User {
+  id             String          @id @default(cuid())
+  orgId          String? // null for super admin and clients
+  org            Organization?   @relation(fields: [orgId], references: [id])
+  role           String // superadmin, orgadmin, driver, client
+  name           String
+  phone          String?         @unique
+  email          String?         @unique
+  pinHash        String? // for driver auth (bcrypt)
+  image          String?
+  emailVerified  DateTime?
+  driver         Driver?
+  bookings       Booking[]       @relation("ClientBookings")
+  ratings        Rating[]        @relation("ClientRatings")
+  savedLocations SavedLocation[]
+  deviceTokens   DeviceToken[]
+  auditLogs      AuditLog[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique // FCM device token
+  platform  String // android, ios, web
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ─── Vehicle Classes & Fleet ─────────────────────────────────────
+
+model VehicleClass {
+  id           String        @id @default(cuid())
+  name         String        @unique // "Mercedes E Class"
+  tags         String[] // ["Business Class", "VIP"]
+  capacity     Int
+  description  String? // "BMW 5 Series, Cadillac XTS or similar"
+  imageUrl     String?
+  sortOrder    Int           @default(0)
+  active       Boolean       @default(true)
+  vehicles     Vehicle[]
+  pricingRules PricingRule[]
+  bookings     Booking[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Vehicle {
+  id             String       @id @default(cuid())
+  orgId          String
+  org            Organization @relation(fields: [orgId], references: [id])
+  vehicleClassId String
+  vehicleClass   VehicleClass @relation(fields: [vehicleClassId], references: [id])
+  plateNumber    String       @unique
+  year           Int?
+  photoUrl       String? // compressed via sharp → WebP
+  status         String       @default("available") // available, on_trip, maintenance
+  driver         Driver?
+  bookings       Booking[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// ─── Drivers ─────────────────────────────────────────────────────
+
+model Driver {
+  id           String           @id @default(cuid())
+  userId       String           @unique
+  user         User             @relation(fields: [userId], references: [id])
+  vehicleId    String?          @unique
+  vehicle      Vehicle?         @relation(fields: [vehicleId], references: [id])
+  licenseNo    String
+  photoUrl     String? // driver profile photo
+  availability String           @default("offline") // online, offline, on_trip
+  inviteStatus String           @default("pending") // pending, accepted, rejected
+  locations    DriverLocation[]
+  trips        Trip[]
+  ratings      Rating[]
+  bookings     Booking[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+// ─── Bookings & Trips ────────────────────────────────────────────
+
+model Booking {
+  id                  String        @id @default(cuid())
+  clientId            String
+  client              User          @relation("ClientBookings", fields: [clientId], references: [id])
+  orgId               String? // null until a driver accepts (set to driver's org)
+  org                 Organization? @relation(fields: [orgId], references: [id])
+  driverId            String? // null until a driver accepts
+  driver              Driver?       @relation(fields: [driverId], references: [id])
+  vehicleId           String? // null until a driver accepts (set to driver's vehicle)
+  vehicle             Vehicle?      @relation(fields: [vehicleId], references: [id])
+  vehicleClassId      String
+  vehicleClass        VehicleClass  @relation(fields: [vehicleClassId], references: [id])
+  pickupAddress       String
+  pickupLat           Float
+  pickupLng           Float
+  dropoffAddress      String
+  dropoffLat          Float
+  dropoffLng          Float
+  stops               Json? // [{address, lat, lng}, ...] for multi-stop
+  scheduledAt         DateTime
+  passengerCount      Int           @default(1)
+  luggageCount        Int           @default(0)
+  specialInstructions String?
+  status              String        @default("pending")
+  // pending → driver_assigned → driver_en_route → waiting_at_pickup → in_progress → completed | cancelled | timed_out
+  timeoutAt           DateTime? // pending + 5 min
+  estimatedDistanceKm Float?
+  estimatedFareMin    Float? // cheapest org's fare
+  estimatedFareMax    Float? // most expensive org's fare
+  acceptedFare        Float? // winning org's fare
+  actualDistanceKm    Float?
+  actualFare          Float?
+  waitingChargeAmount Float? // waiting time surcharge
+  paymentMethod       String? // cash, pos
+  proxySessionId      String? // Twilio Proxy session ID
+  trip                Trip?
+  rating              Rating?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+model Trip {
+  id               String    @id @default(cuid())
+  bookingId        String    @unique
+  booking          Booking   @relation(fields: [bookingId], references: [id])
+  driverId         String
+  driver           Driver    @relation(fields: [driverId], references: [id])
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+  waitingStartedAt DateTime? // driver arrived at pickup
+  waitingEndedAt   DateTime? // passenger picked up
+  waitingMinutes   Float? // total waiting duration
+  paymentConfirmed Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// ─── Ratings ─────────────────────────────────────────────────────
+
+model Rating {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  clientId  String
+  client    User     @relation("ClientRatings", fields: [clientId], references: [id])
+  driverId  String
+  driver    Driver   @relation(fields: [driverId], references: [id])
+  stars     Int // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+}
+
+// ─── GPS Tracking ────────────────────────────────────────────────
+
+model DriverLocation {
+  id         String   @id @default(cuid())
+  driverId   String
+  driver     Driver   @relation(fields: [driverId], references: [id])
+  lat        Float
+  lng        Float
+  accuracy   Float?
+  speed      Float?
+  bearing    Float?
+  recordedAt DateTime @default(now())
+
+  @@index([driverId, recordedAt])
+}
+
+// ─── Pricing ─────────────────────────────────────────────────────
+
+model PricingRule {
+  id                 String       @id @default(cuid())
+  orgId              String
+  org                Organization @relation(fields: [orgId], references: [id])
+  vehicleClassId     String
+  vehicleClass       VehicleClass @relation(fields: [vehicleClassId], references: [id])
+  minimumFare        Float // e.g. €8.00
+  ratePerKm          Float // e.g. €1.20
+  nightMultiplier    Float        @default(1.5)
+  airportFixedRate   Float? // null = use formula
+  freeWaitingMinutes Int          @default(5) // free waiting period
+  waitingRatePerMin  Float        @default(0.30) // charge after free period
+  extraStopFee       Float        @default(3.0) // per additional stop
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@unique([orgId, vehicleClassId])
+}
+
+model CancellationPolicy {
+  id                   String   @id @default(cuid())
+  freeWindowMinutes    Int      @default(120) // free cancel 2+ hours before
+  lateCancelFeePercent Float    @default(0.5) // 50% of estimated fare
+  noShowFeePercent     Float    @default(1.0) // 100% of estimated fare
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// ─── Client Features ─────────────────────────────────────────────
+
+model SavedLocation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String // "Home", "Office", custom
+  address   String
+  lat       Float
+  lng       Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ─── Audit ───────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+}
