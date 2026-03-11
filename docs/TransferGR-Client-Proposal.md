@@ -1,6 +1,6 @@
 # TransferGR — Platform Overview
 
-**Prepared for:** Χρήστος — Transfer
+**Prepared for:** Χρήστος MT & Black Horse
 **Prepared by:** Hexaigon
 **Date:** March 2026
 **Version:** 1.0
@@ -42,7 +42,7 @@ This is your view. You see everything across all organizations. Your primary rol
 ### Live Operations Map
 
 - Real-time map showing every active driver across all organizations, updated every 4 seconds
-- Click any vehicle to see: driver name, organization, current trip, speed, destination, ETA
+- Click any vehicle to see: driver name, organization, current trip, destination, ETA
 - Vehicles cluster automatically when zoomed out — expand by zooming in
 - Filter by organization, vehicle type, or driver status
 
@@ -187,7 +187,7 @@ When a client books a transfer, they choose a vehicle class and see the fare est
 ### Live Operations Map
 
 - Real-time map showing their own drivers' positions
-- Click any vehicle to see: driver name, current trip, speed, destination
+- Click any vehicle to see: driver name, current trip, destination, status
 - Only their own fleet — they cannot see other organizations
 
 ### Revenue & Reports
@@ -509,21 +509,21 @@ Email summaries and reports will be added in the next development phase.
 
 The total cost to build and deliver the platform is:
 
-### **€32,000** (before tax, one-time, fixed price)
+### **€36,000** (before tax, one-time, fixed price)
 
 | Module | What's Included | Price |
 |--------|----------------|-------|
-| Platform foundation | Monorepo setup, database design, authentication (Google OAuth + driver PIN), role-based access control | €2,500 |
-| Master admin panel | Vehicle class catalog, organization verification, commission management, platform analytics, live map of all drivers, audit log | €3,500 |
-| Organization panel | Fleet management with vehicle photos, driver invites (multi-org), pricing configuration per vehicle class, incoming booking acceptance, live fleet map, revenue reports | €3,500 |
-| Client booking system | Uber-style booking with broadcast to orgs, first-to-accept, 5-min timeout, nearest driver ETA, multiple stops, vehicle class selection, fare estimates | €4,000 |
-| Client accounts | Trip history with receipts, saved locations, ratings (1-5 stars), re-book previous trips | €2,000 |
-| Driver mobile app | Capacitor native app (Android + iOS), background GPS tracking, turn-by-turn navigation, waiting timer, multi-org trip list, payment confirmation, driver profile with photo | €4,000 |
-| Real-time infrastructure | Socket.IO + Redis GPS pipeline, Server-Sent Events for booking broadcasts, Google Maps live vehicle tracking with smooth animation, passenger tracking links | €3,000 |
-| Communication & notifications | Push notifications (Firebase + APNs), masked calling/messaging via Twilio Proxy, SMS notifications (fallback) | €2,500 |
-| Fare calculation engine | Google Routes API integration, GPS snap-to-roads, minimum fare + per-km pricing, night surcharges, airport fixed rates, waiting time charges, multi-stop fees | €2,000 |
-| Infrastructure & deployment | Vercel + Hetzner VPS setup, Docker, CI/CD via GitHub Actions, SSL, domain configuration | €1,500 |
-| Quality assurance | End-to-end testing, load testing (50 concurrent GPS streams), bug fixes, production deployment | €1,500 |
+| Platform foundation | Monorepo setup, database design, authentication (Google OAuth + driver PIN), role-based access control | €3,000 |
+| Master admin panel | Vehicle class catalog, organization verification, commission management, platform analytics, live map of all drivers, audit log, cancellation policy | €4,000 |
+| Organization panel | Fleet management with vehicle photos, driver invites, pricing configuration per vehicle class, live fleet map, revenue and driver performance reports | €4,000 |
+| Client booking system | Uber-style booking with broadcast to drivers, first-to-accept, 5-min timeout, nearest driver ETA, multiple stops, vehicle class selection, fare estimates | €4,500 |
+| Client accounts | Trip history with receipts, saved locations, ratings (1-5 stars), re-book previous trips, share trip link | €2,500 |
+| Driver mobile app | Capacitor native app (Android + iOS), background GPS tracking, turn-by-turn navigation, waiting timer, ride accept flow, payment confirmation, driver profile with photo | €4,500 |
+| Real-time infrastructure | Socket.IO + Redis GPS pipeline, Server-Sent Events for dashboards, Google Maps live vehicle tracking with smooth animation, passenger tracking links | €3,500 |
+| Communication & notifications | Push notifications (Firebase + APNs), masked calling/messaging via Twilio Proxy, SMS notifications (fallback) | €3,000 |
+| Fare calculation engine | Google Routes API integration, GPS snap-to-roads, minimum fare + per-km pricing, night surcharges, airport fixed rates, waiting time charges, multi-stop fees | €2,500 |
+| Infrastructure & deployment | Vercel + Hetzner VPS setup, Docker, CI/CD via GitHub Actions, SSL, domain configuration | €2,000 |
+| Quality assurance | End-to-end testing, load testing (50 concurrent GPS streams), bug fixes, production deployment | €2,500 |
 
 ### What's Included in the Price
 
@@ -544,9 +544,9 @@ The total cost to build and deliver the platform is:
 
 | Milestone | When | Amount |
 |-----------|------|--------|
-| Project kickoff | Contract signing | €9,600 (30%) |
-| Core platform demo | Week 8 (booking + org panel + driver app working) | €12,800 (40%) |
-| Production launch | Week 16 (fully deployed, acceptance criteria met) | €9,600 (30%) |
+| Project kickoff | Contract signing | €10,800 (30%) |
+| Core platform demo | Week 8 (booking + org panel + driver app working) | €14,400 (40%) |
+| Production launch | Week 16 (fully deployed, acceptance criteria met) | €10,800 (30%) |
 
 ---
 

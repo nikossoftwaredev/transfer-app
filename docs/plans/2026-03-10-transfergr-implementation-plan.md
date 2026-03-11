@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Build an Uber-style transfer booking platform with real-time GPS tracking, multi-org competition (first to accept wins), masked communication, push notifications, and driver native app.
+**Goal:** Build an Uber-style transfer booking platform with real-time GPS tracking, driver-accepts-ride model (first driver to accept wins), masked communication, push notifications, and driver native app. Each driver belongs to exactly one organization.
 
 **Architecture:** pnpm monorepo with 3 packages: `web` (Next.js 16), `ws-server` (Socket.IO + Redis), `shared` (types + validation). Capacitor wraps the driver routes for native GPS + push. Supabase Postgres for data, Vercel + Hetzner for hosting.
 
@@ -46,8 +46,8 @@
    - `DeviceToken` (FCM push tokens)
    - `VehicleClass` (platform catalog)
    - `Vehicle` (org fleet, with `photoUrl`)
-   - `Driver` (with `photoUrl`)
-   - `DriverOrg` (junction: driver ↔ org, with `availability`, `inviteStatus`)
+   - (Driver model defined above)
+   - `Driver` (with `availability`, `inviteStatus`, `vehicleId` — each driver belongs to one org via User.orgId)
    - `Booking` (with `stops` Json, `timeoutAt`, `estimatedFareMin/Max`, `acceptedFare`, `waitingChargeAmount`, `proxySessionId`)
    - `Trip` (with `waitingStartedAt/EndedAt/Minutes`)
    - `Rating` (1-5 stars + comment)
@@ -137,10 +137,11 @@
 
 **Steps:**
 1. Org admin dashboard layout (sidebar, header)
-2. Invite drivers by phone number → create DriverOrg with `inviteStatus: pending`
+2. Invite drivers by phone number → create User (role: driver, orgId: this org) + Driver with `inviteStatus: pending`
 3. Send SMS with invite link (Twilio)
 4. Driver accepts invite → sets PIN → `inviteStatus: accepted`
-5. Manage org users (add/remove bookers)
+5. Each driver belongs to exactly one organization
+6. Manage org users (add/remove bookers)
 
 ### Task 2.5: Push notification setup (Firebase)
 
@@ -182,7 +183,7 @@
 1. Org selects which vehicle classes they offer
 2. Register vehicles: plate, vehicle class, year, photo upload (sharp → WebP)
 3. Vehicle status management: available, on_trip, maintenance
-4. Assign/unassign vehicles to drivers (via DriverOrg)
+4. Assign/unassign vehicles to drivers (via Driver.vehicleId)
 5. Only classes with registered vehicles + pricing rules show in booking broadcasts
 
 ### Task 3.3: Organization — pricing configuration
@@ -239,33 +240,33 @@
 4. Client selects class → show fare range prominently
 5. Fare calculator: `MAX(minimumFare, ratePerKm × distance) × nightMultiplier + stops × extraStopFee`
 
-### Task 4.4: Booking confirmation + broadcast
+### Task 4.4: Booking confirmation + broadcast to drivers
 
 **Files:**
-- Create: `packages/web/lib/notifications/booking-broadcast.ts`
+- Create: `packages/web/lib/notifications/ride-broadcast.ts`
 - Create: API route for booking creation
 
 **Steps:**
 1. Client confirms: create Booking with `status: pending`, `timeoutAt: now + 5min`
-2. Find all verified orgs that: offer the vehicle class AND have at least one online driver
-3. SSE broadcast to matching orgs with booking details + their calculated fare
-4. Push notification to org admins
-5. Client sees "Finding your driver..." screen with countdown
+2. Find all online drivers (from verified orgs) whose assigned vehicle matches the requested vehicle class
+3. Push notification to all matching drivers with trip details + their org's calculated fare
+4. Client sees "Finding your driver..." screen with countdown
 
-### Task 4.5: Booking accept (race condition safe)
+### Task 4.5: Driver accept (race condition safe)
 
 **Files:**
-- Create: API route for booking acceptance
+- Create: API route for ride acceptance
 
 **Steps:**
-1. Org taps "Accept" → atomic DB update:
+1. Driver taps "Accept" → atomic DB update:
    ```sql
-   UPDATE bookings SET org_id = ?, status = 'accepted' WHERE id = ? AND status = 'pending'
+   UPDATE bookings SET driver_id = ?, org_id = (driver's org), vehicle_id = (driver's vehicle), status = 'driver_assigned'
+   WHERE id = ? AND status = 'pending'
    ```
-2. If 0 rows updated → return error "Booking no longer available"
-3. If successful → SSE broadcast `booking_taken` to all other orgs
-4. Client receives push notification: "Organization accepted!"
-5. Org assigns driver + vehicle → client gets driver photo, vehicle photo, plate, ETA
+2. If 0 rows updated → return error "Ride no longer available"
+3. If successful → push notification to all other drivers: ride disappears
+4. Client receives push notification: driver photo, name, vehicle photo, plate, ETA
+5. Twilio Proxy session created for masked communication
 
 ### Task 4.6: Booking timeout
 
@@ -278,6 +279,7 @@
 2. Find bookings where `status = 'pending' AND timeoutAt < now()`
 3. Update to `status: timed_out`
 4. Push notification + SMS to client: "No driver available. Try again?"
+5. Client can retry with same details
 5. Client can retry with same details
 
 ---
@@ -292,7 +294,7 @@
 **Steps:**
 1. Phone + PIN login page (uses NextAuth credentials provider)
 2. Profile page: upload/change driver photo (sharp → WebP → Supabase storage)
-3. Show all organizations the driver belongs to
+3. Show driver's organization and assigned vehicle
 
 ### Task 5.2: Driver trip list + accept/reject
 
@@ -300,11 +302,11 @@
 - Create: `packages/web/app/[locale]/driver/trips/` — trip list, trip detail pages
 
 **Steps:**
-1. List assigned trips from ALL the driver's organizations, sorted by date
-2. Label each trip with org name
-3. New trip notification (push) with accept/reject buttons
-4. Accept → trip status changes to `driver_en_route`
-5. Reject → org is notified, can assign another driver
+1. List incoming ride requests and accepted trips, sorted by date
+2. New ride request notification (push) with "Accept" button
+3. Accept → atomic DB update, driver wins the ride (race condition safe)
+4. If ride already taken → show "Ride no longer available"
+5. Accepted trips show in trip list with full details
 
 ### Task 5.3: Trip execution flow
 
@@ -426,9 +428,9 @@
 
 **Steps:**
 1. Integrate `push.ts` from Task 2.5 into all booking lifecycle events
-2. Client push: booking confirmed, org accepted, driver assigned (with photos), en route, waiting, timeout, completed + rate
-3. Driver push: new trip assigned with accept/reject action
-4. Org admin push: new available booking, low rating alert
+2. Client push: booking confirmed, driver accepted (with photos), en route, waiting, timeout, completed + rate
+3. Driver push: new ride request with fare + distance — tap to accept; ride taken by another driver
+4. Org admin push: low rating alert, driver goes offline
 5. Test on real devices (Android + iOS)
 
 ---
@@ -594,17 +596,17 @@
 
 ## Milestone 11: Organization Dashboard (Week 13-14)
 
-### Task 11.1: Org — incoming bookings + accept
+### Task 11.1: Org — bookings monitoring
 
 **Files:**
-- Create: `packages/web/app/[locale]/org/bookings/` — booking list, accept flow
+- Create: `packages/web/app/[locale]/org/bookings/` — booking list, booking detail pages
 
 **Steps:**
-1. Real-time list of available bookings (SSE from booking broadcast)
-2. Each booking shows: pickup, dropoff, stops, distance, vehicle class, org's fare
-3. "Accept" button with countdown timer
-4. Accepted booking → assign driver + vehicle from fleet
-5. Booking disappears from list when another org accepts (SSE `booking_taken`)
+1. Real-time list of all bookings taken by the org's drivers
+2. Each booking shows: pickup, dropoff, stops, distance, vehicle class, fare, driver, status
+3. Live status updates via SSE (driver en route → waiting → in progress → completed)
+4. Booking history with filters (date, driver, status, vehicle class)
+5. Revenue attributed through their drivers' accepted rides
 
 ### Task 11.2: Org — live fleet map
 
@@ -656,9 +658,9 @@
 ### Task 12.4: End-to-end testing
 
 **Steps:**
-1. Full booking flow: client books → org accepts → driver assigned → trip executed → payment → rating
-2. Booking timeout: no org accepts → client notified
-3. Race condition: two orgs try to accept simultaneously → only one succeeds
+1. Full booking flow: client books → ride broadcast → driver accepts → trip executed → payment → rating
+2. Booking timeout: no driver accepts → client notified
+3. Race condition: two drivers try to accept simultaneously → only one succeeds
 4. GPS tracking: driver starts trip → positions appear on dashboard in real-time
 5. Masked communication: client calls driver via proxy number
 6. Waiting time: driver arrives → timer starts → charge applied
@@ -678,15 +680,16 @@
 
 All must pass in production:
 1. Client can book a ride, choosing vehicle class and multiple stops
-2. Booking broadcasts to matching orgs, first to accept wins
-3. Booking times out after 5 minutes if no org accepts
+2. Ride request broadcasts to all matching available drivers — first driver to accept wins
+3. Booking times out after 5 minutes if no driver accepts
 4. Nearest driver ETA shows on booking screen
-5. Org admin can manage fleet, drivers, and pricing per vehicle class
-6. Driver can accept trip, navigate, track waiting time, confirm payment
-7. Live GPS tracking works on org dashboard, admin map, and client tracking page
-8. Client and driver can communicate via masked numbers
-9. Rating system works end-to-end
-10. Client has trip history with receipts and saved locations
-11. Master admin sees commission reports per org
-12. Push notifications delivered on Android and iOS
-13. Platform handles 50 concurrent GPS streams without degradation
+5. Org admin can manage fleet, invite drivers, and configure pricing per vehicle class
+6. Driver can accept rides, navigate, track waiting time, confirm payment
+7. Each driver belongs to exactly one organization
+8. Live GPS tracking works on org dashboard, admin map, and client tracking page
+9. Client and driver can communicate via masked numbers
+10. Rating system works end-to-end
+11. Client has trip history with receipts and saved locations
+12. Master admin sees commission reports per org
+13. Push notifications delivered on Android and iOS
+14. Platform handles 50 concurrent GPS streams without degradation

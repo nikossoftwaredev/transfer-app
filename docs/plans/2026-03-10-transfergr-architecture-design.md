@@ -1,7 +1,7 @@
 # TransferGR Architecture Design
 
 **Date:** 2026-03-11
-**Status:** Approved (v3 — full feature set)
+**Status:** Approved (v4 — drivers accept rides, single-org model)
 **Scope:** Architecture, scale, hosting, and technical approach for Phase 1
 
 ---
@@ -10,7 +10,7 @@
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Business model | Uber-style: clients book, orgs compete to accept | Client doesn't choose an org — first to accept wins |
+| Business model | Uber-style: clients book, drivers compete to accept | Client doesn't choose an org — ride request goes to all matching drivers, first to accept wins |
 | WS server language | Node.js/TypeScript | Same language as web app, shared types, no Python dependency |
 | Monorepo tooling | Plain pnpm workspaces | 2-3 packages, Turborepo overkill for now |
 | Launch scale | Small (1-5 orgs, 10-30 vehicles) | Architect for ~100 concurrent GPS streams max |
@@ -76,7 +76,7 @@ transfer-app/
 │   │   │   │   ├── push.ts           # Firebase Cloud Messaging
 │   │   │   │   ├── sms.ts            # Twilio SMS
 │   │   │   │   ├── sse.ts            # SSE emitter (Redis → client)
-│   │   │   │   └── booking-broadcast.ts  # Find matching orgs, broadcast booking
+│   │   │   │   └── ride-broadcast.ts      # Find matching drivers, broadcast ride request
 │   │   │   ├── communication/
 │   │   │   │   └── twilio-proxy.ts   # Masked calling/messaging sessions
 │   │   │   ├── pricing/
@@ -124,7 +124,7 @@ transfer-app/
 | Super Admin (Master) | Google OAuth | `/admin/*` | Everything — all orgs, trips, revenue, commission, vehicle catalog, cancellation policy |
 | Org Admin | Google OAuth | `/org/*` | Own fleet, drivers, pricing, bookings, revenue |
 | Client | Google OAuth or guest | `/book/*`, `/account/*` | Book rides, track trips, rate, view receipts, saved locations |
-| Driver | Phone + PIN | `/driver/*` | Assigned trips from all their orgs, GPS, communication, payment confirm |
+| Driver | Phone + PIN | `/driver/*` | Accept ride requests, GPS, navigation, communication, payment confirm |
 
 **Middleware** checks role on every route group. JWT contains `role` + `orgId` (nullable for super admin and clients).
 
@@ -143,29 +143,29 @@ transfer-app/
 
 ### Broadcast & Accept
 1. Booking created with status `pending`, `timeoutAt` set to `now() + 5 minutes`
-2. SSE broadcast to **all verified orgs** that offer the requested vehicle class and have available drivers
-3. Each org sees: pickup, dropoff, stops, distance, and **their fare** (based on their pricing)
-4. **First org to accept wins** — atomic DB update:
+2. Push notification sent to **all available drivers** (from verified orgs) that have the requested vehicle class
+3. Each driver sees: pickup, dropoff, stops, distance, and **their org's fare** (based on their org's pricing)
+4. **First driver to accept wins** — atomic DB update:
    ```sql
-   UPDATE bookings SET org_id = ?, status = 'accepted'
+   UPDATE bookings SET driver_id = ?, org_id = (driver's org), vehicle_id = (driver's vehicle), status = 'driver_assigned'
    WHERE id = ? AND status = 'pending'
    ```
-5. If 0 rows updated → another org already accepted → return "booking no longer available"
-6. SSE broadcasts `booking_taken` to all other orgs (booking disappears)
-7. Accepting org assigns a driver + vehicle
-8. Client receives push notification: **driver photo, name, vehicle photo, plate, ETA**
+5. If 0 rows updated → another driver already accepted → return "ride no longer available"
+6. Push notification sent to all other drivers: ride disappears from their screen
+7. Client receives push notification: **driver photo, name, vehicle photo, plate, ETA**
+8. Twilio Proxy session created for masked communication
 
 ### Booking Timeout
 - Background job checks for `pending` bookings past `timeoutAt`
-- After 5 minutes with no acceptance → status changes to `timed_out`
+- After 5 minutes with no driver accepting → status changes to `timed_out`
 - Client receives push notification + SMS: "No driver available. Try again?"
 - Client can retry with same details or modify
 
 ### Booking Statuses
 ```
-pending → accepted → driver_assigned → driver_en_route → waiting_at_pickup → in_progress → completed
-                                                                                          → cancelled (at any stage before in_progress)
-       → timed_out (no org accepted within 5 minutes)
+pending → driver_assigned → driver_en_route → waiting_at_pickup → in_progress → completed
+                                                                                → cancelled (at any stage before in_progress)
+       → timed_out (no driver accepted within 5 minutes)
 ```
 
 ---
@@ -209,7 +209,7 @@ If airport pickup/dropoff → use `airportFixedRate` instead of baseFare (surcha
 - Google Routes API with waypoints → `distanceMeters`
 - Query all orgs' pricing rules for selected vehicle class
 - Show client fare range: cheapest to most expensive org
-- After an org accepts → show exact fare based on that org's pricing
+- After a driver accepts → show exact fare based on that driver's org pricing
 
 ### Post-trip Actual
 - GPS trace from 30s-interval points → Google Roads API `snapToRoads` → actual distance
@@ -355,13 +355,13 @@ Driver taps "Picked Up" → API calculates waiting duration
 | Event | Recipient | Push Content |
 |-------|-----------|-------------|
 | Booking confirmed | Client | "Finding your driver..." |
-| Org accepted | Client | "Athens Executive Cars accepted your booking" |
-| Driver assigned | Client | Driver photo, vehicle photo, name, plate, ETA |
+| Driver accepted | Client | Driver photo, vehicle photo, name, plate, ETA |
 | Driver en route | Client | "Your driver is on the way" |
 | Waiting at pickup | Client | "Driver is waiting at pickup" |
-| Timeout (no org accepted) | Client | "No driver available. Try again?" |
+| Timeout (no driver accepted) | Client | "No driver available. Try again?" |
 | Trip completed | Client | Fare + "Rate your experience" |
-| New trip assigned | Driver | Trip details with accept/reject actions |
+| New ride request | Available drivers | Trip details, fare, distance — tap to accept |
+| Ride taken | Remaining drivers | Ride disappears from their screen |
 
 ### SMS fallback
 SMS sent for critical events (driver assigned, en route, trip completed) regardless of push — ensures delivery even without the app installed.
@@ -389,8 +389,8 @@ Next.js route group `/driver/` rendered inside a Capacitor shell.
 ### Driver flow
 1. Login with phone + PIN (NextAuth credentials provider)
 2. Upload/update profile photo
-3. See assigned trips from all organizations they belong to, sorted chronologically
-4. Receive push notification for new trip → Accept or reject
+3. See incoming ride requests and accepted trips, sorted chronologically
+4. Receive push notification for new ride request → Tap to accept before other drivers
 5. Tap "Start Trip" → foreground service starts → GPS broadcasting begins
 6. Tap "Navigate" → opens Google Maps/Waze with destination (supports waypoints for multi-stop)
 7. GPS continues broadcasting while driver uses external navigation
@@ -401,10 +401,11 @@ Next.js route group `/driver/` rendered inside a Capacitor shell.
 12. Tap "Complete Trip" → stops GPS → payment confirmation screen
 13. Select payment method (cash / POS) → trip closed
 
-### Multi-org drivers
-- A driver can be invited to multiple organizations
-- Trip list shows trips from all their orgs, labeled by org name
-- Each org manages the driver independently (can assign vehicles, set availability)
+### Driver-Organization Relationship
+- Each driver belongs to exactly one organization
+- Org admin invites drivers via SMS — driver receives link to join
+- Org admin assigns a vehicle from their fleet to each driver
+- Driver's availability (online/offline/on_trip) is managed by the org
 
 ### Offline resilience
 - Trip details cached in Capacitor Preferences on assignment
@@ -465,7 +466,6 @@ model Organization {
   bookings        Booking[]
   vehicles        Vehicle[]
   pricingRules    PricingRule[]
-  driverOrgs      DriverOrg[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -529,7 +529,6 @@ model Vehicle {
   year           Int?
   photoUrl       String?                          // compressed via sharp → WebP
   status         String       @default("available") // available, on_trip, maintenance
-  driverOrgs     DriverOrg[]
   bookings       Booking[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -539,9 +538,12 @@ model Driver {
   id           String        @id @default(cuid())
   userId       String        @unique
   user         User          @relation(fields: [userId], references: [id])
+  vehicleId    String?
+  vehicle      Vehicle?      @relation(fields: [vehicleId], references: [id])
   licenseNo    String
   photoUrl     String?                            // driver profile photo
-  driverOrgs   DriverOrg[]
+  availability String        @default("offline")  // online, offline, on_trip
+  inviteStatus String        @default("pending")  // pending, accepted, rejected
   locations    DriverLocation[]
   trips        Trip[]
   ratings      Rating[]
@@ -549,32 +551,15 @@ model Driver {
   updatedAt    DateTime      @updatedAt
 }
 
-// Junction table: driver can belong to multiple organizations
-model DriverOrg {
-  id           String       @id @default(cuid())
-  driverId     String
-  driver       Driver       @relation(fields: [driverId], references: [id])
-  orgId        String
-  org          Organization @relation(fields: [orgId], references: [id])
-  vehicleId    String?
-  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id])
-  availability String       @default("offline") // online, offline, on_trip
-  inviteStatus String       @default("pending") // pending, accepted, rejected
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  @@unique([driverId, orgId])
-}
-
 model Booking {
   id                     String        @id @default(cuid())
   clientId               String
   client                 User          @relation("ClientBookings", fields: [clientId], references: [id])
-  orgId                  String?                               // null until an org accepts
+  orgId                  String?                               // null until a driver accepts (set to driver's org)
   org                    Organization? @relation(fields: [orgId], references: [id])
-  driverId               String?
+  driverId               String?                               // null until a driver accepts
   driver                 Driver?       @relation(fields: [driverId], references: [id])
-  vehicleId              String?
+  vehicleId              String?                               // null until a driver accepts (set to driver's vehicle)
   vehicle                Vehicle?      @relation(fields: [vehicleId], references: [id])
   vehicleClassId         String
   vehicleClass           VehicleClass  @relation(fields: [vehicleClassId], references: [id])
@@ -590,7 +575,7 @@ model Booking {
   luggageCount           Int           @default(0)
   specialInstructions    String?
   status                 String        @default("pending")
-  // pending → accepted → driver_assigned → driver_en_route → waiting_at_pickup → in_progress → completed | cancelled | timed_out
+  // pending → driver_assigned → driver_en_route → waiting_at_pickup → in_progress → completed | cancelled | timed_out
   timeoutAt              DateTime?                             // pending + 5 min
   estimatedDistanceKm    Float?
   estimatedFareMin       Float?                                // cheapest org's fare
@@ -709,8 +694,8 @@ model AuditLog {
 
 ### Booking statuses
 ```
-pending → accepted → driver_assigned → driver_en_route → waiting_at_pickup → in_progress → completed
-       → timed_out (no org accepted within 5 minutes)
+pending → driver_assigned → driver_en_route → waiting_at_pickup → in_progress → completed
+       → timed_out (no driver accepted within 5 minutes)
        → cancelled (at any stage before in_progress)
 ```
 
@@ -719,13 +704,11 @@ pending → accepted → driver_assigned → driver_en_route → waiting_at_pick
 ## 14. Notifications Architecture
 
 ### Push (Primary — Firebase Cloud Messaging)
-- Client: booking status, driver assigned (with photos), ETA, waiting, timeout, trip completed + rate
-- Driver: new trip assignment with accept/reject, client communication
-- Org admin: new available booking (broadcast), low rating alert
+- Client: booking status, driver accepted (with photos), ETA, waiting, timeout, trip completed + rate
+- Driver: new ride request with fare details → tap to accept, client communication
+- Org admin: low rating alert, driver goes offline
 
 ### SSE (Real-time dashboards)
-- Booking broadcast → all matching verified orgs
-- Booking taken → remaining orgs (booking disappears)
 - Trip status changes → org dashboard, client tracking page
 - GPS updates → live map markers
 - Waiting timer sync → client + driver
@@ -740,7 +723,7 @@ pending → accepted → driver_assigned → driver_en_route → waiting_at_pick
 - `lib/notifications/push.ts` — Firebase Admin SDK, send to device tokens
 - `lib/notifications/sms.ts` — Twilio SDK wrapper
 - `lib/notifications/sse.ts` — SSE emitter reading from Redis pub/sub
-- `lib/notifications/booking-broadcast.ts` — find matching orgs, send SSE + push to each
+- `lib/notifications/ride-broadcast.ts` — find matching drivers, send push to each
 - All triggered from server actions after state changes
 - SMS sent async (fire-and-forget with error logging)
 
