@@ -47,6 +47,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "marked": "^17.0.4",
     "prisma": "^5.22.0",
     "puppeteer": "^24.37.5",
     "tailwindcss": "^4",
