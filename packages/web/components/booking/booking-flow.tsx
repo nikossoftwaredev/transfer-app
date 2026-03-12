@@ -72,6 +72,8 @@ export const BookingFlow = () => {
   const route = useBookingStore((s) => s.route);
   const vehicleClasses = useBookingStore((s) => s.vehicleClasses);
   const assistance = useBookingStore((s) => s.assistance);
+  const setPassengerCount = useBookingStore((s) => s.setPassengerCount);
+  const setLuggageCount = useBookingStore((s) => s.setLuggageCount);
   const setRoute = useBookingStore((s) => s.setRoute);
   const setVehicleClasses = useBookingStore((s) => s.setVehicleClasses);
   const setBookingId = useBookingStore((s) => s.setBookingId);
@@ -392,6 +394,61 @@ export const BookingFlow = () => {
               </button>
             </div>
           )}
+
+          {/* Passengers & Luggage */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-white/6 border border-white/10 p-4">
+              <label className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-widest mb-2">
+                <Users className="size-3.5" />
+                Passengers
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))}
+                  className="size-8 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center transition-colors duration-300 text-lg"
+                >
+                  -
+                </button>
+                <span className="text-xl font-semibold text-white tabular-nums w-6 text-center">
+                  {passengerCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPassengerCount(Math.min(50, passengerCount + 1))}
+                  className="size-8 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center transition-colors duration-300 text-lg"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white/6 border border-white/10 p-4">
+              <label className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-widest mb-2">
+                <Luggage className="size-3.5" />
+                Luggage
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))}
+                  className="size-8 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center transition-colors duration-300 text-lg"
+                >
+                  -
+                </button>
+                <span className="text-xl font-semibold text-white tabular-nums w-6 text-center">
+                  {luggageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLuggageCount(Math.min(20, luggageCount + 1))}
+                  className="size-8 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center transition-colors duration-300 text-lg"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* CTA */}
           <button

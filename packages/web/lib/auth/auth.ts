@@ -3,6 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
 import { compare } from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/db";
 
 export const authOptions: NextAuthOptions = {
@@ -126,6 +127,16 @@ export const authOptions: NextAuthOptions = {
       session.user.role = token.role;
       session.user.orgId = token.orgId;
       session.user.driverId = token.driverId;
+      session.wsToken = jwt.sign(
+        {
+          id: token.id,
+          role: token.role,
+          orgId: token.orgId,
+          driverId: token.driverId,
+        },
+        process.env.NEXTAUTH_SECRET || "dev-secret",
+        { expiresIn: "24h" }
+      );
       return session;
     },
   },

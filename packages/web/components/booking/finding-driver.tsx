@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { X, Car, Check } from "lucide-react";
 import { useBookingStore } from "@/lib/stores/booking-store";
 import { cancelBooking, getBooking } from "@/server_actions/bookings";
+import { useSocket } from "@/hooks/use-socket";
 import { toast } from "sonner";
 
 export const FindingDriver = () => {
   const bookingId = useBookingStore((s) => s.bookingId);
   const reset = useBookingStore((s) => s.reset);
+  const setDriverId = useBookingStore((s) => s.setDriverId);
   const [timeLeft, setTimeLeft] = useState(300);
   const [status, setStatus] = useState<string>("pending");
   const [driverInfo, setDriverInfo] = useState<{
@@ -16,6 +18,61 @@ export const FindingDriver = () => {
     plate: string;
     vehicleClass: string;
   } | null>(null);
+
+  const socketRef = useSocket();
+
+  // Subscribe to booking room via WebSocket
+  useEffect(() => {
+    if (!bookingId || status !== "pending") return;
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    socket.emit("subscribe:booking", bookingId);
+
+    const handleAccepted = (data: {
+      bookingId: string;
+      driverId: string;
+      driverName: string;
+      plate: string;
+      vehicleClassName: string;
+    }) => {
+      if (data.bookingId === bookingId) {
+        setStatus("driver_assigned");
+        setDriverId(data.driverId);
+        setDriverInfo({
+          name: data.driverName,
+          plate: data.plate,
+          vehicleClass: data.vehicleClassName,
+        });
+        // Subscribe to driver's GPS for live tracking on map
+        socket.emit("subscribe:trip", data.driverId);
+      }
+    };
+
+    const handleTimedOut = (data: { bookingId: string }) => {
+      if (data.bookingId === bookingId) {
+        setStatus("timed_out");
+      }
+    };
+
+    const handleCancelled = (data: { bookingId: string }) => {
+      if (data.bookingId === bookingId) {
+        setStatus("cancelled");
+        toast.info("Booking was cancelled");
+        reset();
+      }
+    };
+
+    socket.on("booking:accepted", handleAccepted);
+    socket.on("booking:timed_out", handleTimedOut);
+    socket.on("booking:cancelled", handleCancelled);
+
+    return () => {
+      socket.off("booking:accepted", handleAccepted);
+      socket.off("booking:timed_out", handleTimedOut);
+      socket.off("booking:cancelled", handleCancelled);
+    };
+  }, [bookingId, status, socketRef, reset, setDriverId]);
 
   // Countdown timer
   useEffect(() => {
@@ -33,7 +90,7 @@ export const FindingDriver = () => {
     return () => clearInterval(interval);
   }, [status]);
 
-  // Poll for booking status changes
+  // Fallback polling (reduced frequency — WebSocket is primary)
   useEffect(() => {
     if (!bookingId || status !== "pending") return;
 
@@ -57,7 +114,7 @@ export const FindingDriver = () => {
       } catch {
         // ignore polling errors
       }
-    }, 3000);
+    }, 10000);
 
     return () => clearInterval(pollInterval);
   }, [bookingId, status]);

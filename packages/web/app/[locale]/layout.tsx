@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { setRequestLocale, getMessages } from "next-intl/server";
-import { Roboto } from "next/font/google";
+import { Roboto, DM_Serif_Display } from "next/font/google";
 import { routing } from "@/lib/i18n/routing";
 import { Providers } from "@/components/providers";
 import { BaseLayoutProps } from "@/types/page-props";
@@ -12,6 +12,12 @@ const roboto = Roboto({
   variable: "--font-roboto",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+});
+
+const dmSerif = DM_Serif_Display({
+  variable: "--font-dm-serif",
+  subsets: ["latin"],
+  weight: ["400"],
 });
 
 export const metadata: Metadata = {
@@ -43,7 +49,7 @@ const LocaleLayout = async ({ children, params }: BaseLayoutProps) => {
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className={`${roboto.variable} font-sans antialiased`}>
+      <body className={`${roboto.variable} ${dmSerif.variable} font-sans antialiased`}>
         <Providers messages={messages} locale={locale}>
           {children}
         </Providers>

@@ -238,3 +238,29 @@ export interface AuditLog {
   metadata: Record<string, unknown> | null;
   createdAt: Date;
 }
+
+// ─── WebSocket Booking Events ────────────────────────────────────
+
+export interface WsNewBookingPayload {
+  bookingId: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  scheduledAt: string;
+  passengerCount: number;
+  estimatedFareMin: number | null;
+  estimatedFareMax: number | null;
+  estimatedDistanceKm: number | null;
+  vehicleClassName: string;
+  clientName: string;
+}
+
+export interface WsBookingAcceptedPayload {
+  bookingId: string;
+  driverName: string;
+  plate: string;
+  vehicleClassName: string;
+}
+
+export interface WsBookingRemovedPayload {
+  bookingId: string;
+}

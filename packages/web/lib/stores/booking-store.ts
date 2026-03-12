@@ -54,6 +54,7 @@ interface BookingState {
   route: RouteInfo | null;
   vehicleClasses: VehicleClassOption[];
   bookingId: string | null;
+  driverId: string | null;
   assistance: AssistanceOptions;
 
   setStep: (step: BookingStep) => void;
@@ -69,6 +70,7 @@ interface BookingState {
   setRoute: (route: RouteInfo) => void;
   setVehicleClasses: (classes: VehicleClassOption[]) => void;
   setBookingId: (id: string) => void;
+  setDriverId: (id: string | null) => void;
   toggleAssistance: (key: keyof AssistanceOptions) => void;
   reset: () => void;
 }
@@ -90,6 +92,7 @@ const initialState = {
   route: null as RouteInfo | null,
   vehicleClasses: [] as VehicleClassOption[],
   bookingId: null as string | null,
+  driverId: null as string | null,
   assistance: {
     suitcases: false,
     childSeat: false,
@@ -120,6 +123,7 @@ export const useBookingStore = create<BookingState>((set) => ({
   setRoute: (route) => set({ route }),
   setVehicleClasses: (classes) => set({ vehicleClasses: classes }),
   setBookingId: (id) => set({ bookingId: id }),
+  setDriverId: (id) => set({ driverId: id }),
   toggleAssistance: (key) =>
     set((state) => ({
       assistance: {

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { calculateRoute } from "@/lib/maps/routes";
 import { calculateFareRange } from "@/lib/pricing/calculator";
 import { sendPush, sendPushToMany } from "@/lib/notifications/push";
+import { wsEmit } from "@/lib/ws/emit";
 
 const BOOKING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -174,6 +175,25 @@ export async function createBooking(input: CreateBookingInput) {
   // Broadcast to matching drivers
   await broadcastToDrivers(booking.id, input.vehicleClassId, route.distanceKm);
 
+  // Real-time notification via WebSocket
+  const vehicleClass = await prisma.vehicleClass.findUnique({
+    where: { id: input.vehicleClassId },
+    select: { name: true },
+  });
+  await wsEmit("booking:new", {
+    bookingId: booking.id,
+    vehicleClassId: input.vehicleClassId,
+    pickupAddress: input.pickupAddress,
+    dropoffAddress: input.dropoffAddress,
+    scheduledAt: scheduledDate.toISOString(),
+    passengerCount: input.passengerCount || 1,
+    estimatedFareMin: fareRange?.min || null,
+    estimatedFareMax: fareRange?.max || null,
+    estimatedDistanceKm: route.distanceKm,
+    vehicleClassName: vehicleClass?.name || "",
+    clientName: session.user.name || "Client",
+  });
+
   revalidatePath("/book");
   return booking;
 }
@@ -296,6 +316,16 @@ export async function acceptBooking(bookingId: string) {
       title: "Driver Assigned!",
       body: `${booking.driver?.user.name} is on the way in a ${booking.driver?.vehicle?.vehicleClass.name} (${booking.driver?.vehicle?.plateNumber})`,
       data: { type: "driver_assigned", bookingId },
+    });
+
+    // Real-time notification via WebSocket
+    await wsEmit("booking:accepted", {
+      bookingId,
+      vehicleClassId: booking.vehicleClassId,
+      driverId,
+      driverName: booking.driver?.user.name || "Driver",
+      plate: booking.driver?.vehicle?.plateNumber || "",
+      vehicleClassName: booking.driver?.vehicle?.vehicleClass.name || "",
     });
   }
 
@@ -423,6 +453,18 @@ export async function cancelBooking(bookingId: string) {
 
   if (updated.count === 0) {
     throw new Error("Cannot cancel this booking");
+  }
+
+  // Notify via WebSocket
+  const cancelled = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { vehicleClassId: true },
+  });
+  if (cancelled) {
+    await wsEmit("booking:cancelled", {
+      bookingId,
+      vehicleClassId: cancelled.vehicleClassId,
+    });
   }
 
   revalidatePath("/book");

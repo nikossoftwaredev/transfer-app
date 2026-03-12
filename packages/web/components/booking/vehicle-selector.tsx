@@ -16,18 +16,23 @@ export const VehicleSelector = () => {
   const vehicleClasses = useBookingStore((s) => s.vehicleClasses);
   const selectedClassId = useBookingStore((s) => s.selectedClassId);
   const setSelectedClass = useBookingStore((s) => s.setSelectedClass);
+  const passengerCount = useBookingStore((s) => s.passengerCount);
 
-  if (vehicleClasses.length === 0) {
+  const filteredClasses = vehicleClasses.filter(
+    (vc) => vc.capacity >= passengerCount
+  );
+
+  if (filteredClasses.length === 0) {
     return (
       <div className="text-center text-white/30 py-12">
-        No vehicles available for this route.
+        No vehicles available for {passengerCount} passengers.
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      {vehicleClasses.map((vc) => {
+      {filteredClasses.map((vc) => {
         const active = selectedClassId === vc.id;
         const icon = VEHICLE_ICONS[vc.name] || "🚗";
 

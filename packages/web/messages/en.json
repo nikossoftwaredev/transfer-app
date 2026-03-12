@@ -37,9 +37,21 @@
       "support": "24/7 Support",
       "supportDesc": "Round-the-clock customer support. We're here whenever you need us."
     },
+    "fleet": {
+      "title": "Our Fleet",
+      "subtitle": "Premium vehicles for every journey",
+      "passengers": "passengers",
+      "from": "From"
+    },
+    "stats": {
+      "trips": "Transfers Completed",
+      "cities": "Cities Covered",
+      "rating": "Average Rating",
+      "support": "Support"
+    },
     "cta": {
-      "title": "Ready to Go?",
-      "subtitle": "Book your transfer in under a minute.",
+      "title": "Your Journey Starts Here",
+      "subtitle": "Book a premium transfer in under 60 seconds. Fixed prices, professional drivers, real-time tracking.",
       "button": "Book Now"
     }
   },

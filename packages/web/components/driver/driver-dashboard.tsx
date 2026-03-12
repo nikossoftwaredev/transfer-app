@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import {
 import { toggleAvailability } from "@/server_actions/trips";
 import { acceptBooking } from "@/server_actions/bookings";
 import { updateTripStatus } from "@/server_actions/trips";
+import { useSocket } from "@/hooks/use-socket";
 import { toast } from "sonner";
 import { cn } from "@/lib/general/utils";
 
@@ -133,7 +135,49 @@ export const DriverDashboard = ({
   activeBookings,
 }: DriverDashboardProps) => {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const isOnline = driver.availability === "online";
+  const socketRef = useSocket();
+
+  // WebSocket: register for booking events when online
+  useEffect(() => {
+    if (!isOnline) return;
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    const vehicleClassId = driver.vehicle?.vehicleClass.id;
+    if (!vehicleClassId) return;
+
+    // Register to receive bookings for this vehicle class
+    socket.emit("driver:register", { vehicleClassId });
+
+    const handleNewBooking = () => {
+      // Refresh server data to pick up the new booking
+      router.refresh();
+    };
+
+    const handleBookingRemoved = () => {
+      // Refresh to remove accepted/cancelled bookings from list
+      router.refresh();
+    };
+
+    socket.on("booking:new", handleNewBooking);
+    socket.on("booking:removed", handleBookingRemoved);
+
+    return () => {
+      socket.off("booking:new", handleNewBooking);
+      socket.off("booking:removed", handleBookingRemoved);
+    };
+  }, [isOnline, socketRef, driver.vehicle?.vehicleClass.id, router]);
+
+  // Fallback polling every 10s when online (WebSocket is primary)
+  useEffect(() => {
+    if (!isOnline) return;
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isOnline, router]);
 
   const handleToggle = (checked: boolean) => {
     startTransition(async () => {

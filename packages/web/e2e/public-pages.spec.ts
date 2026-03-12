@@ -6,7 +6,7 @@ test.describe("Public pages", () => {
     await expect(page).toHaveTitle(/TransferGR/i);
 
     // Hero text
-    await expect(page.locator("text=Premium Transfer Services")).toBeVisible();
+    await expect(page.locator("h1:has-text('Premium Transfer Services')")).toBeVisible();
 
     // Nav items
     await expect(page.locator("text=Book Now").first()).toBeVisible();

@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
       await prisma.driver.upsert({
         where: { userId: driverUser.id },
-        update: { vehicleId: vehicle.id, vehicleClassId: eClassId },
+        update: { vehicleId: vehicle.id, vehicleClassId: eClassId, availability: "online", inviteStatus: "accepted" },
         create: {
           userId: driverUser.id,
           orgId: org.id,
@@ -116,6 +116,8 @@ export async function POST(request: Request) {
           vehicleYear: 2023,
           vehicleColor: "Black",
           isOnline: true,
+          availability: "online",
+          inviteStatus: "accepted",
         },
       });
     }

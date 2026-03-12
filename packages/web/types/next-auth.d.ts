@@ -8,6 +8,7 @@ declare module "next-auth" {
       orgId: string | null;
       driverId: string | null;
     } & DefaultSession["user"];
+    wsToken: string;
   }
 }
 
