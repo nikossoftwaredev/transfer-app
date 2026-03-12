@@ -3,9 +3,9 @@
 import { prisma } from "@/lib/db";
 
 /**
- * Calculate commission for a completed trip.
+ * Calculate commission for a completed trip. (Pure math, no DB)
  */
-export function calculateCommission(
+function calculateCommission(
   actualFare: number,
   commissionRate: number
 ): number {

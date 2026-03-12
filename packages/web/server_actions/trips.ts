@@ -224,6 +224,38 @@ export async function confirmPayment(
 }
 
 /**
+ * Get completed trips for the current week, grouped by date, with ratings.
+ */
+export async function getCompletedTripsHistory() {
+  const session = await requireRole("driver");
+  const driverId = session.user.driverId;
+  if (!driverId) throw new Error("Not a driver");
+
+  // Start of the current week (Monday)
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() + mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+
+  return prisma.booking.findMany({
+    where: {
+      driverId,
+      status: "completed",
+      scheduledAt: { gte: weekStart },
+    },
+    include: {
+      vehicleClass: { select: { name: true } },
+      client: { select: { name: true } },
+      trip: true,
+      rating: { select: { stars: true } },
+    },
+    orderBy: { scheduledAt: "desc" },
+  });
+}
+
+/**
  * Toggle driver availability.
  */
 export async function toggleAvailability(online: boolean) {
