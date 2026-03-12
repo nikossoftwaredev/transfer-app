@@ -17,6 +17,16 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: "TransferGR — Premium Transfer Services in Greece",
   description: "Book airport transfers, city rides, and port connections across Greece. Professional drivers, fixed prices, real-time tracking.",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#171717",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "TransferGR",
+  },
+  icons: {
+    apple: "/icons/icon-192.png",
+  },
 };
 
 export const generateStaticParams = () => {
