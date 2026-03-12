@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut } from "lucide-react";
+import { LogOut, LayoutDashboard } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,16 +12,27 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Link } from "@/lib/i18n/navigation";
+import { useTranslations } from "next-intl";
+
+const ROLE_ROUTES: Record<string, string> = {
+  client: "/book",
+  driver: "/driver",
+  orgadmin: "/org",
+  superadmin: "/admin",
+};
 
 interface ProfileAvatarProps {
   user: {
     name?: string | null;
     email?: string | null;
     image?: string | null;
+    role?: string;
   };
 }
 
 export const ProfileAvatar = ({ user }: ProfileAvatarProps) => {
+  const t = useTranslations("Auth.profile");
   const initials = user.name
     ?.split(" ")
     .map((n) => n[0])
@@ -29,9 +40,7 @@ export const ProfileAvatar = ({ user }: ProfileAvatarProps) => {
     .toUpperCase()
     .slice(0, 2) || "U";
 
-  const handleSignOut = () => {
-    signOut({ callbackUrl: "/" });
-  };
+  const dashboardRoute = ROLE_ROUTES[user.role || "client"] || "/";
 
   return (
     <DropdownMenu>
@@ -55,12 +64,19 @@ export const ProfileAvatar = ({ user }: ProfileAvatarProps) => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href={dashboardRoute} className="flex items-center gap-2">
+            <LayoutDashboard className="size-4" />
+            {t("dashboard")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={handleSignOut}
+          onClick={() => signOut({ callbackUrl: "/" })}
           className="cursor-pointer text-destructive focus:text-destructive"
         >
           <LogOut className="mr-2 h-4 w-4 text-destructive" />
-          <span>Sign out</span>
+          {t("signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
