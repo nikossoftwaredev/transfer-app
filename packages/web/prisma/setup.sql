@@ -297,7 +297,7 @@ ON CONFLICT ("id") DO NOTHING;
 
 -- Demo Driver User (PIN: 1234, hash generated with bcryptjs)
 INSERT INTO "User" ("id", "name", "phone", "pinHash", "role", "orgId", "updatedAt")
-VALUES ('usr-driver1', 'Demo Driver', '+306911111111', '$2a$10$placeholder_will_be_set_later', 'driver', 'org-demo', CURRENT_TIMESTAMP)
+VALUES ('usr-driver1', 'Demo Driver', '+306911111111', '$2b$10$DVLuCpNObkFKIRF1UFPSyuGHAmp76WmNc2HaWHtuhNuI81UFubeWm', 'driver', 'org-demo', CURRENT_TIMESTAMP)
 ON CONFLICT ("id") DO NOTHING;
 
 -- Demo Driver

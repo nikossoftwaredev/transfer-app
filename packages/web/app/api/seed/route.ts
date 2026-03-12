@@ -83,18 +83,32 @@ export async function POST(request: Request) {
     const driverPin = await hash("1234", 10);
     const driverUser = await prisma.user.upsert({
       where: { phone: "+306911111111" },
-      update: {},
+      update: { pinHash: driverPin },
       create: { name: "Demo Driver", phone: "+306911111111", pinHash: driverPin, role: "driver", orgId: org.id },
     });
 
     const eClassId = createdClasses.find((c) => c.name === "Mercedes E Class")?.id;
     if (eClassId) {
+      // Create a Vehicle record for the demo driver
+      const vehicle = await prisma.vehicle.upsert({
+        where: { plateNumber: "AAA-1234" },
+        update: {},
+        create: {
+          orgId: org.id,
+          vehicleClassId: eClassId,
+          plateNumber: "AAA-1234",
+          year: 2023,
+          status: "available",
+        },
+      });
+
       await prisma.driver.upsert({
         where: { userId: driverUser.id },
-        update: {},
+        update: { vehicleId: vehicle.id, vehicleClassId: eClassId },
         create: {
           userId: driverUser.id,
           orgId: org.id,
+          vehicleId: vehicle.id,
           vehicleClassId: eClassId,
           licensePlate: "AAA-1234",
           vehicleMake: "Mercedes-Benz",
