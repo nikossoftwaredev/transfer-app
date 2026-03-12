@@ -10,6 +10,7 @@ const PROTECTED_ROUTES: Record<string, string[]> = {
   "/admin": ["superadmin"],
   "/org": ["orgadmin"],
   "/driver": ["driver"],
+  "/book": ["client", "superadmin", "orgadmin"],
   "/account": ["client", "superadmin", "orgadmin"],
 };
 
