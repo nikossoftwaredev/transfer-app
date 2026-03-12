@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -44,12 +45,14 @@ async function main() {
     },
   ];
 
+  const createdClasses = [];
   for (const vc of vehicleClasses) {
-    await prisma.vehicleClass.upsert({
+    const created = await prisma.vehicleClass.upsert({
       where: { name: vc.name },
       update: vc,
       create: vc,
     });
+    createdClasses.push(created);
     console.log(`  Vehicle class: ${vc.name}`);
   }
 
@@ -58,9 +61,9 @@ async function main() {
   if (!existingPolicy) {
     await prisma.cancellationPolicy.create({
       data: {
-        freeWindowMinutes: 120, // 2 hours before pickup
-        lateCancelFeePercent: 0.5, // 50% of estimated fare
-        noShowFeePercent: 1.0, // 100% of estimated fare
+        freeWindowMinutes: 120,
+        lateCancelFeePercent: 0.5,
+        noShowFeePercent: 1.0,
       },
     });
     console.log("  Cancellation policy: created default");
@@ -81,7 +84,93 @@ async function main() {
   });
   console.log(`  Super admin: ${adminEmail}`);
 
-  console.log("Seeding complete.");
+  // ─── Demo Organization ───────────────────────────────────────
+  const org = await prisma.organization.upsert({
+    where: { slug: "demo-transfers" },
+    update: {},
+    create: {
+      name: "Demo Transfers",
+      slug: "demo-transfers",
+      status: "verified",
+      commissionRate: 0.15,
+      contactEmail: "info@demotransfers.gr",
+      contactPhone: "+306900000000",
+    },
+  });
+  console.log(`  Organization: ${org.name}`);
+
+  // ─── Pricing Rules (per vehicle class) ───────────────────────
+  const pricingData = [
+    { className: "Mercedes E Class", ratePerKm: 1.2, minimumFare: 35, nightMultiplier: 1.5, airportFixedRate: 55, extraStopFee: 5 },
+    { className: "Mercedes S Class", ratePerKm: 1.8, minimumFare: 55, nightMultiplier: 1.5, airportFixedRate: 85, extraStopFee: 8 },
+    { className: "Mercedes Vito", ratePerKm: 1.5, minimumFare: 45, nightMultiplier: 1.5, airportFixedRate: 65, extraStopFee: 5 },
+    { className: "Mercedes V Class", ratePerKm: 1.7, minimumFare: 50, nightMultiplier: 1.5, airportFixedRate: 75, extraStopFee: 7 },
+    { className: "Mercedes Sprinter", ratePerKm: 2.0, minimumFare: 65, nightMultiplier: 1.5, airportFixedRate: 95, extraStopFee: 10 },
+  ];
+
+  for (const p of pricingData) {
+    const vc = createdClasses.find((c) => c.name === p.className);
+    if (!vc) continue;
+
+    await prisma.pricingRule.upsert({
+      where: {
+        orgId_vehicleClassId: { orgId: org.id, vehicleClassId: vc.id },
+      },
+      update: {
+        ratePerKm: p.ratePerKm,
+        minimumFare: p.minimumFare,
+        nightMultiplier: p.nightMultiplier,
+        airportFixedRate: p.airportFixedRate,
+        extraStopFee: p.extraStopFee,
+      },
+      create: {
+        orgId: org.id,
+        vehicleClassId: vc.id,
+        ratePerKm: p.ratePerKm,
+        minimumFare: p.minimumFare,
+        nightMultiplier: p.nightMultiplier,
+        airportFixedRate: p.airportFixedRate,
+        extraStopFee: p.extraStopFee,
+      },
+    });
+    console.log(`  Pricing: ${p.className} @ €${p.ratePerKm}/km`);
+  }
+
+  // ─── Demo Driver ─────────────────────────────────────────────
+  const driverPin = await hash("1234", 10);
+  const driverUser = await prisma.user.upsert({
+    where: { phone: "+306911111111" },
+    update: {},
+    create: {
+      name: "Demo Driver",
+      phone: "+306911111111",
+      pinHash: driverPin,
+      role: "driver",
+      orgId: org.id,
+    },
+  });
+
+  const eClassId = createdClasses.find((c) => c.name === "Mercedes E Class")?.id;
+  if (eClassId) {
+    await prisma.driver.upsert({
+      where: { userId: driverUser.id },
+      update: {},
+      create: {
+        userId: driverUser.id,
+        orgId: org.id,
+        vehicleClassId: eClassId,
+        licensePlate: "AAA-1234",
+        vehicleMake: "Mercedes-Benz",
+        vehicleModel: "E 220d",
+        vehicleYear: 2023,
+        vehicleColor: "Black",
+        isOnline: true,
+      },
+    });
+    console.log(`  Demo driver: +306911111111 (PIN: 1234)`);
+  }
+
+  console.log("\nSeeding complete.");
 }
 
 main()

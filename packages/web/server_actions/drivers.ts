@@ -57,6 +57,7 @@ export async function inviteDriver(data: {
     await tx.driver.create({
       data: {
         userId: newUser.id,
+        orgId,
         licenseNo: data.licenseNo,
         inviteStatus: "pending",
       },

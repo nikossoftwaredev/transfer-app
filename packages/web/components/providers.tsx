@@ -2,7 +2,7 @@
 
 import { SessionProvider } from "next-auth/react";
 import { AbstractIntlMessages,NextIntlClientProvider } from "next-intl";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from "next-themes";
 
 import { DialogProvider } from "@/components/dialog-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -18,10 +18,7 @@ export const Providers = ({ children, messages, locale }: Props) => {
   return (
     <SessionProvider>
       <NextThemesProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
+        {...{ attribute: "class", defaultTheme: "system", enableSystem: true, disableTransitionOnChange: true } as ThemeProviderProps}
       >
         <NextIntlClientProvider messages={messages} locale={locale}>
           <TooltipProvider>

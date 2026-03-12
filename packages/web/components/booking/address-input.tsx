@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { MapPin } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 interface AddressInputProps {
   label: string;
@@ -19,21 +17,30 @@ export const AddressInput = ({
 }: AddressInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const onSelectRef = useRef(onSelect);
   const [inputValue, setInputValue] = useState(value);
+
+  // Keep callback ref current without re-running the init effect
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   useEffect(() => {
     setInputValue(value);
   }, [value]);
 
-  useEffect(() => {
-    if (!inputRef.current || !window.google?.maps?.places) return;
-    if (autocompleteRef.current) return;
+  const initAutocomplete = useCallback(() => {
+    if (!inputRef.current || autocompleteRef.current) return;
+    if (!window.google?.maps?.places) return;
 
-    const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
-      types: ["geocode", "establishment"],
-      componentRestrictions: { country: "gr" },
-      fields: ["formatted_address", "geometry", "name"],
-    });
+    const autocomplete = new google.maps.places.Autocomplete(
+      inputRef.current,
+      {
+        types: ["geocode", "establishment"],
+        componentRestrictions: { country: "gr" },
+        fields: ["formatted_address", "geometry", "name"],
+      }
+    );
 
     autocomplete.addListener("place_changed", () => {
       const place = autocomplete.getPlace();
@@ -46,27 +53,44 @@ export const AddressInput = ({
       const lng = place.geometry.location.lng();
 
       setInputValue(address);
-      onSelect(address, lat, lng);
+      onSelectRef.current(address, lat, lng);
     });
 
     autocompleteRef.current = autocomplete;
-  }, [onSelect]);
+  }, []);
+
+  useEffect(() => {
+    // If Google Maps is already loaded, init immediately
+    if (window.google?.maps?.places) {
+      initAutocomplete();
+      return;
+    }
+
+    // Otherwise, poll until it's available (script loads async)
+    const interval = setInterval(() => {
+      if (window.google?.maps?.places) {
+        initAutocomplete();
+        clearInterval(interval);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [initAutocomplete]);
 
   return (
     <div>
-      <label className="text-sm font-medium text-muted-foreground mb-1 block">
-        {label}
-      </label>
-      <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder={placeholder}
-          className="pl-9"
-        />
-      </div>
+      {label && (
+        <label className="text-xs text-white/40 uppercase tracking-widest mb-1 block">
+          {label}
+        </label>
+      )}
+      <input
+        ref={inputRef}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        placeholder={placeholder}
+        className="w-full h-11 bg-transparent text-sm text-white placeholder:text-white/25 outline-none"
+      />
     </div>
   );
 };

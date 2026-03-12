@@ -31,7 +31,8 @@ export async function createOrganization(data: {
 }) {
   // Anyone can submit an org application (creates as pending)
   await requireSession();
-  const org = await prisma.organization.create({ data });
+  const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const org = await prisma.organization.create({ data: { ...data, slug } });
   revalidatePath("/admin/organizations");
   return org;
 }

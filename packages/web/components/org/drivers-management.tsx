@@ -42,7 +42,7 @@ interface DriverUser {
   createdAt: Date;
   driver: {
     id: string;
-    licenseNo: string;
+    licenseNo: string | null;
     availability: string;
     inviteStatus: string;
     vehicleId: string | null;

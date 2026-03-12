@@ -13,10 +13,13 @@ datasource db {
 model Organization {
   id             String        @id @default(cuid())
   name           String
+  slug           String        @unique
   contactEmail   String
+  contactPhone   String?
   status         String        @default("pending") // pending, verified, suspended
   commissionRate Float         @default(0.15) // platform commission (15%)
   users          User[]
+  drivers        Driver[]
   bookings       Booking[]
   vehicles       Vehicle[]
   pricingRules   PricingRule[]
@@ -71,6 +74,7 @@ model VehicleClass {
   sortOrder    Int           @default(0)
   active       Boolean       @default(true)
   vehicles     Vehicle[]
+  drivers      Driver[]
   pricingRules PricingRule[]
   bookings     Booking[]
   createdAt    DateTime      @default(now())
@@ -96,21 +100,31 @@ model Vehicle {
 // ─── Drivers ─────────────────────────────────────────────────────
 
 model Driver {
-  id           String           @id @default(cuid())
-  userId       String           @unique
-  user         User             @relation(fields: [userId], references: [id])
-  vehicleId    String?          @unique
-  vehicle      Vehicle?         @relation(fields: [vehicleId], references: [id])
-  licenseNo    String
-  photoUrl     String? // driver profile photo
-  availability String           @default("offline") // online, offline, on_trip
-  inviteStatus String           @default("pending") // pending, accepted, rejected
-  locations    DriverLocation[]
-  trips        Trip[]
-  ratings      Rating[]
-  bookings     Booking[]
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id             String           @id @default(cuid())
+  userId         String           @unique
+  user           User             @relation(fields: [userId], references: [id])
+  orgId          String
+  org            Organization     @relation(fields: [orgId], references: [id])
+  vehicleId      String?          @unique
+  vehicle        Vehicle?         @relation(fields: [vehicleId], references: [id])
+  vehicleClassId String?
+  vehicleClass   VehicleClass?    @relation(fields: [vehicleClassId], references: [id])
+  licenseNo      String?
+  licensePlate   String?
+  vehicleMake    String?
+  vehicleModel   String?
+  vehicleYear    Int?
+  vehicleColor   String?
+  isOnline       Boolean          @default(false)
+  photoUrl       String? // driver profile photo
+  availability   String           @default("offline") // online, offline, on_trip
+  inviteStatus   String           @default("pending") // pending, accepted, rejected
+  locations      DriverLocation[]
+  trips          Trip[]
+  ratings        Rating[]
+  bookings       Booking[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 }
 
 // ─── Bookings & Trips ────────────────────────────────────────────

@@ -1,10 +1,7 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useBookingStore } from "@/lib/stores/booking-store";
-import { Users, Luggage } from "lucide-react";
+import { Users, Luggage, Clock, MessageSquare } from "lucide-react";
 
 export const BookingDetails = () => {
   const passengerCount = useBookingStore((s) => s.passengerCount);
@@ -24,14 +21,14 @@ export const BookingDetails = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-medium text-muted-foreground">
-        Trip Details
-      </h3>
-
-      <div>
-        <Label>Pickup Date & Time</Label>
-        <Input
+    <div className="space-y-3">
+      {/* Date & Time */}
+      <div className="rounded-2xl bg-white/6 border border-white/10 p-4">
+        <label className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-widest mb-2">
+          <Clock className="size-3.5" />
+          Pickup Date & Time
+        </label>
+        <input
           type="datetime-local"
           value={formatDateTimeLocal(scheduledAt)}
           onChange={(e) => {
@@ -39,50 +36,78 @@ export const BookingDetails = () => {
             if (!isNaN(date.getTime())) setScheduledAt(date);
           }}
           min={formatDateTimeLocal(new Date())}
+          className="w-full bg-transparent text-white text-sm outline-none scheme-dark"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="flex items-center gap-1">
-            <Users className="size-3" />
+      {/* Passengers & Luggage */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-white/6 border border-white/10 p-4">
+          <label className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-widest mb-2">
+            <Users className="size-3.5" />
             Passengers
-          </Label>
-          <Input
-            type="number"
-            min={1}
-            max={50}
-            value={passengerCount}
-            onChange={(e) =>
-              setPassengerCount(Math.max(1, parseInt(e.target.value) || 1))
-            }
-          />
+          </label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPassengerCount(Math.max(1, passengerCount - 1))}
+              className="size-8 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center transition-colors duration-300 text-lg"
+            >
+              -
+            </button>
+            <span className="text-xl font-semibold text-white tabular-nums w-6 text-center">
+              {passengerCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPassengerCount(Math.min(50, passengerCount + 1))}
+              className="size-8 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center transition-colors duration-300 text-lg"
+            >
+              +
+            </button>
+          </div>
         </div>
-        <div>
-          <Label className="flex items-center gap-1">
-            <Luggage className="size-3" />
+
+        <div className="rounded-2xl bg-white/6 border border-white/10 p-4">
+          <label className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-widest mb-2">
+            <Luggage className="size-3.5" />
             Luggage
-          </Label>
-          <Input
-            type="number"
-            min={0}
-            max={20}
-            value={luggageCount}
-            onChange={(e) =>
-              setLuggageCount(Math.max(0, parseInt(e.target.value) || 0))
-            }
-          />
+          </label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setLuggageCount(Math.max(0, luggageCount - 1))}
+              className="size-8 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center transition-colors duration-300 text-lg"
+            >
+              -
+            </button>
+            <span className="text-xl font-semibold text-white tabular-nums w-6 text-center">
+              {luggageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setLuggageCount(Math.min(20, luggageCount + 1))}
+              className="size-8 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center transition-colors duration-300 text-lg"
+            >
+              +
+            </button>
+          </div>
         </div>
       </div>
 
-      <div>
-        <Label>Special Instructions (optional)</Label>
-        <Textarea
+      {/* Special instructions */}
+      <div className="rounded-2xl bg-white/6 border border-white/10 p-4">
+        <label className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-widest mb-2">
+          <MessageSquare className="size-3.5" />
+          Special Instructions
+        </label>
+        <textarea
           value={specialInstructions}
           onChange={(e) => setSpecialInstructions(e.target.value)}
-          placeholder="Flight number, child seat needed, wheelchair accessible..."
+          placeholder="Flight number, meeting point details..."
           maxLength={500}
           rows={3}
+          className="w-full bg-transparent text-white text-sm outline-none resize-none placeholder:text-white/20"
         />
       </div>
     </div>

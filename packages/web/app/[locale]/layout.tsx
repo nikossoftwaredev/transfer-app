@@ -15,8 +15,8 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "App",
-  description: "",
+  title: "TransferGR — Premium Transfer Services in Greece",
+  description: "Book airport transfers, city rides, and port connections across Greece. Professional drivers, fixed prices, real-time tracking.",
 };
 
 export const generateStaticParams = () => {

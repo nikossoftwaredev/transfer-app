@@ -1,10 +1,16 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Users, Check } from "lucide-react";
 import { cn } from "@/lib/general/utils";
 import { useBookingStore } from "@/lib/stores/booking-store";
+
+const VEHICLE_ICONS: Record<string, string> = {
+  "Mercedes E Class": "🚗",
+  "Mercedes S Class": "🚘",
+  "Mercedes Vito": "🚐",
+  "Mercedes V Class": "🚐",
+  "Mercedes Sprinter": "🚌",
+};
 
 export const VehicleSelector = () => {
   const vehicleClasses = useBookingStore((s) => s.vehicleClasses);
@@ -13,73 +19,88 @@ export const VehicleSelector = () => {
 
   if (vehicleClasses.length === 0) {
     return (
-      <div className="text-center text-muted-foreground py-8">
-        No vehicle classes available for this route.
+      <div className="text-center text-white/30 py-12">
+        No vehicles available for this route.
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-medium text-muted-foreground">
-        Select Vehicle
-      </h3>
-      <div className="grid gap-3">
-        {vehicleClasses.map((vc) => (
-          <Card
+    <div className="space-y-2">
+      {vehicleClasses.map((vc) => {
+        const active = selectedClassId === vc.id;
+        const icon = VEHICLE_ICONS[vc.name] || "🚗";
+
+        return (
+          <button
             key={vc.id}
-            className={cn(
-              "cursor-pointer transition-all duration-300 hover:shadow-md",
-              selectedClassId === vc.id
-                ? "ring-2 ring-primary border-primary"
-                : "hover:border-primary/50"
-            )}
+            type="button"
             onClick={() => setSelectedClass(vc.id)}
+            className={cn(
+              "w-full flex items-center gap-4 p-4 rounded-2xl border transition-all duration-300",
+              "text-left group",
+              active
+                ? "bg-white/10 border-amber-400/50"
+                : "bg-white/6 border-white/10 hover:bg-white/8 hover:border-white/20"
+            )}
           >
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{vc.name}</span>
-                  {selectedClassId === vc.id && (
-                    <Check className="size-4 text-primary" />
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+            {/* Vehicle icon */}
+            <div className="text-3xl shrink-0 w-12 text-center">{icon}</div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "font-semibold transition-colors duration-300",
+                  active ? "text-white" : "text-white/80"
+                )}>
+                  {vc.name}
+                </span>
+                {active && (
+                  <div className="size-5 rounded-full bg-amber-400 flex items-center justify-center">
+                    <Check className="size-3 text-[#0a0a0f]" />
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-3 mt-0.5">
+                <span className="text-xs text-white/40 flex items-center gap-1">
                   <Users className="size-3" />
-                  <span>Up to {vc.capacity} passengers</span>
-                </div>
-                {vc.tags.length > 0 && (
-                  <div className="flex gap-1 mt-2">
-                    {vc.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="text-right">
-                {vc.fareRange ? (
-                  <div>
-                    <div className="text-lg font-bold">
-                      {vc.fareRange.min === vc.fareRange.max
-                        ? `€${vc.fareRange.min.toFixed(2)}`
-                        : `€${vc.fareRange.min.toFixed(2)} – €${vc.fareRange.max.toFixed(2)}`}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      estimated fare
-                    </div>
-                  </div>
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    Price unavailable
+                  {vc.capacity}
+                </span>
+                {vc.tags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="text-xs text-white/30">
+                    {tag}
                   </span>
-                )}
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              {vc.description && (
+                <p className="text-xs text-white/25 mt-1 truncate">{vc.description}</p>
+              )}
+            </div>
+
+            {/* Price */}
+            <div className="text-right shrink-0">
+              {vc.fareRange ? (
+                <>
+                  <div className={cn(
+                    "text-xl font-bold tabular-nums transition-colors duration-300",
+                    active ? "text-amber-400" : "text-white"
+                  )}>
+                    €{vc.fareRange.min === vc.fareRange.max
+                      ? vc.fareRange.min.toFixed(0)
+                      : `${vc.fareRange.min.toFixed(0)}–${vc.fareRange.max.toFixed(0)}`}
+                  </div>
+                  <div className="text-[10px] text-white/30 uppercase tracking-wider">
+                    est.
+                  </div>
+                </>
+              ) : (
+                <span className="text-sm text-white/30">—</span>
+              )}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 };

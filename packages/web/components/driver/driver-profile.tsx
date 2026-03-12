@@ -7,7 +7,7 @@ import { User, Car, Building2, Phone } from "lucide-react";
 interface DriverProfileProps {
   driver: {
     id: string;
-    licenseNo: string;
+    licenseNo: string | null;
     availability: string;
     inviteStatus: string;
     user: {

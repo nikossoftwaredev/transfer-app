@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Loader2, X } from "lucide-react";
+import { X, Car, Check } from "lucide-react";
 import { useBookingStore } from "@/lib/stores/booking-store";
 import { cancelBooking, getBooking } from "@/server_actions/bookings";
 import { toast } from "sonner";
@@ -11,7 +9,7 @@ import { toast } from "sonner";
 export const FindingDriver = () => {
   const bookingId = useBookingStore((s) => s.bookingId);
   const reset = useBookingStore((s) => s.reset);
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+  const [timeLeft, setTimeLeft] = useState(300);
   const [status, setStatus] = useState<string>("pending");
   const [driverInfo, setDriverInfo] = useState<{
     name: string;
@@ -80,62 +78,88 @@ export const FindingDriver = () => {
 
   if (status === "driver_assigned" && driverInfo) {
     return (
-      <Card>
-        <CardContent className="text-center py-12 space-y-4">
-          <div className="size-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-            <span className="text-3xl">✓</span>
+      <div className="text-center py-16 space-y-6">
+        <div className="relative mx-auto w-24 h-24">
+          <div className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
+          <div className="relative size-24 rounded-full bg-emerald-400/10 border-2 border-emerald-400 flex items-center justify-center">
+            <Check className="size-10 text-emerald-400" />
           </div>
-          <h2 className="text-2xl font-bold">Driver Found!</h2>
-          <div className="space-y-2 text-lg">
-            <p className="font-semibold">{driverInfo.name}</p>
-            <p className="text-muted-foreground">
-              {driverInfo.vehicleClass} — {driverInfo.plate}
-            </p>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Your driver is on the way.
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-white">Driver found</h2>
+          <p className="text-white/40 mt-1">Your transfer is confirmed</p>
+        </div>
+        <div className="rounded-2xl bg-white/6 border border-white/10 p-5 max-w-xs mx-auto space-y-2">
+          <p className="text-lg font-semibold text-white">{driverInfo.name}</p>
+          <p className="text-sm text-white/50">
+            {driverInfo.vehicleClass} &middot; {driverInfo.plate}
           </p>
-        </CardContent>
-      </Card>
+        </div>
+        <p className="text-sm text-white/30">
+          Your driver is on the way
+        </p>
+      </div>
     );
   }
 
   if (status === "timed_out") {
     return (
-      <Card>
-        <CardContent className="text-center py-12 space-y-4">
-          <div className="size-16 rounded-full bg-orange-100 flex items-center justify-center mx-auto">
-            <span className="text-3xl">⏱</span>
-          </div>
-          <h2 className="text-2xl font-bold">No Driver Available</h2>
-          <p className="text-muted-foreground">
-            Unfortunately no driver was available for your ride. Please try
-            again.
+      <div className="text-center py-16 space-y-6">
+        <div className="size-20 rounded-full bg-amber-400/10 border-2 border-amber-400/30 flex items-center justify-center mx-auto">
+          <span className="text-4xl">&#9203;</span>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-white">No driver available</h2>
+          <p className="text-white/40 mt-2 max-w-xs mx-auto">
+            No driver was available for your ride. Please try again.
           </p>
-          <Button onClick={reset} className="mt-4">
-            Try Again
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
+        <button
+          onClick={reset}
+          className="px-8 h-12 rounded-2xl bg-white text-[#0a0a0f] font-semibold hover:bg-amber-400 transition-colors duration-300"
+        >
+          TRY AGAIN
+        </button>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardContent className="text-center py-12 space-y-6">
-        <Loader2 className="size-12 animate-spin mx-auto text-primary" />
-        <h2 className="text-2xl font-bold">Finding your driver...</h2>
-        <p className="text-muted-foreground">
-          We&apos;re looking for the nearest available driver.
-        </p>
-        <div className="text-4xl font-mono font-bold tabular-nums">
-          {minutes}:{seconds.toString().padStart(2, "0")}
+    <div className="text-center py-16 space-y-8">
+      {/* Radar pulse animation */}
+      <div className="relative mx-auto w-32 h-32">
+        <div className="absolute inset-0 rounded-full bg-amber-400/10 animate-ping" style={{ animationDuration: "2s" }} />
+        <div className="absolute inset-3 rounded-full bg-amber-400/10 animate-ping" style={{ animationDuration: "2s", animationDelay: "0.5s" }} />
+        <div className="absolute inset-6 rounded-full bg-amber-400/10 animate-ping" style={{ animationDuration: "2s", animationDelay: "1s" }} />
+        <div className="relative size-32 flex items-center justify-center">
+          <div className="size-14 rounded-full bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center">
+            <Car className="size-7 text-amber-400" />
+          </div>
         </div>
-        <Button variant="outline" onClick={handleCancel}>
-          <X className="size-4" />
-          Cancel Booking
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div>
+        <h2 className="text-2xl font-bold text-white">
+          Matching nearby drivers...
+        </h2>
+        <p className="text-white/40 mt-2">
+          Looking for the nearest available driver
+        </p>
+      </div>
+
+      {/* Countdown */}
+      <div className="text-5xl font-bold text-white/90 tabular-nums tracking-wider">
+        {minutes}:{seconds.toString().padStart(2, "0")}
+      </div>
+
+      {/* Cancel */}
+      <button
+        onClick={handleCancel}
+        className="inline-flex items-center gap-2 px-6 h-11 rounded-2xl border border-white/15 text-sm text-white/50 hover:text-white/80 hover:border-white/30 transition-all duration-300"
+      >
+        <X className="size-4" />
+        Cancel
+      </button>
+    </div>
   );
 };
