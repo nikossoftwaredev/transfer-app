@@ -19,6 +19,12 @@ export default async function middleware(req: NextRequest) {
   // Strip locale prefix to get the route path (e.g., /en/admin → /admin)
   const pathWithoutLocale = pathname.replace(/^\/(en|el)/, "") || "/";
 
+  // Allow unauthenticated access to auth pages and driver login
+  const PUBLIC_AUTH_ROUTES = ["/auth/signin", "/driver/login"];
+  if (PUBLIC_AUTH_ROUTES.some((route) => pathWithoutLocale.startsWith(route))) {
+    return intlMiddleware(req);
+  }
+
   // Check if this is a protected route
   const matchedRoute = Object.keys(PROTECTED_ROUTES).find((route) =>
     pathWithoutLocale.startsWith(route)

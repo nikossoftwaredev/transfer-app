@@ -130,8 +130,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/api/auth/signin",
-    error: "/api/auth/error",
+    signIn: "/auth/signin",
+    error: "/auth/signin?error=true",
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

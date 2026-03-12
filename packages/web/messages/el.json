@@ -53,6 +53,33 @@
     "driver": "Πύλη Οδηγού",
     "orgDashboard": "Πίνακας Ελέγχου"
   },
+  "Auth": {
+    "signin": {
+      "title": "Καλώς Ήρθατε",
+      "subtitle": "Συνδεθείτε για να συνεχίσετε στο TransferGR",
+      "googleButton": "Συνέχεια με Google",
+      "or": "ή",
+      "driverLink": "Σύνδεση ως Οδηγός",
+      "terms": "Συνεχίζοντας, αποδέχεστε τους Όρους Χρήσης και την Πολιτική Απορρήτου"
+    },
+    "driverLogin": {
+      "title": "Σύνδεση Οδηγού",
+      "subtitle": "Συνδεθείτε με τον αριθμό τηλεφώνου και το PIN σας",
+      "phoneLabel": "Αριθμός Τηλεφώνου",
+      "phonePlaceholder": "691 234 5678",
+      "pinLabel": "PIN",
+      "pinPlaceholder": "Εισάγετε το 4ψήφιο PIN σας",
+      "signInButton": "Σύνδεση",
+      "backLink": "Πίσω στη σύνδεση",
+      "errorInvalid": "Λάθος αριθμός τηλεφώνου ή PIN",
+      "errorGeneric": "Κάτι πήγε στραβά. Δοκιμάστε ξανά."
+    },
+    "profile": {
+      "dashboard": "Πίνακας Ελέγχου",
+      "signOut": "Αποσύνδεση",
+      "myAccount": "Ο Λογαριασμός μου"
+    }
+  },
   "Admin": {
     "nav": {
       "management": "Διαχείριση",

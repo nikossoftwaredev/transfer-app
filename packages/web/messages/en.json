@@ -53,6 +53,33 @@
     "driver": "Driver Portal",
     "orgDashboard": "Dashboard"
   },
+  "Auth": {
+    "signin": {
+      "title": "Welcome",
+      "subtitle": "Sign in to continue to TransferGR",
+      "googleButton": "Continue with Google",
+      "or": "or",
+      "driverLink": "Sign in as Driver",
+      "terms": "By continuing, you agree to our Terms of Service and Privacy Policy"
+    },
+    "driverLogin": {
+      "title": "Driver Login",
+      "subtitle": "Sign in with your phone number and PIN",
+      "phoneLabel": "Phone Number",
+      "phonePlaceholder": "691 234 5678",
+      "pinLabel": "PIN",
+      "pinPlaceholder": "Enter your 4-digit PIN",
+      "signInButton": "Sign In",
+      "backLink": "Back to main login",
+      "errorInvalid": "Invalid phone number or PIN",
+      "errorGeneric": "Something went wrong. Please try again."
+    },
+    "profile": {
+      "dashboard": "Go to Dashboard",
+      "signOut": "Sign Out",
+      "myAccount": "My Account"
+    }
+  },
   "Admin": {
     "nav": {
       "management": "Management",
