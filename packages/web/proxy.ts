@@ -20,7 +20,7 @@ export default async function middleware(req: NextRequest) {
   const pathWithoutLocale = pathname.replace(/^\/(en|el)/, "") || "/";
 
   // Allow unauthenticated access to auth pages and driver login
-  const PUBLIC_AUTH_ROUTES = ["/auth/signin", "/driver/login"];
+  const PUBLIC_AUTH_ROUTES = ["/auth/signin", "/auth/driver"];
   if (PUBLIC_AUTH_ROUTES.some((route) => pathWithoutLocale.startsWith(route))) {
     return intlMiddleware(req);
   }

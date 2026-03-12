@@ -91,7 +91,7 @@ export const SigninForm = ({
         </div>
 
         <Button asChild variant="ghost" className="w-full h-11 text-sm">
-          <Link href="/driver/login">{t.driverLink} &rarr;</Link>
+          <Link href="/auth/driver">{t.driverLink} &rarr;</Link>
         </Button>
       </CardContent>
 
