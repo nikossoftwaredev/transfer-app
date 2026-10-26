@@ -7,7 +7,7 @@ const Footer = () => {
         <p>
           Made by{" "}
           <a
-            href="https://hexaigon.com"
+            href="https://hexaigon.gr"
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium text-foreground hover:text-primary transition-colors"
